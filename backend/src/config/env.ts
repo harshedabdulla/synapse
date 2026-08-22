@@ -29,7 +29,13 @@ export const ENV = {
   // real distribution the operating point is ~0.3. Overridable via env for tuning.
   SEMANTIC_SIMILARITY_THRESHOLD: process.env.SEMANTIC_SIMILARITY_THRESHOLD
     ? parseFloat(process.env.SEMANTIC_SIMILARITY_THRESHOLD)
-    : 0.3,
+    : 0.25,
+  // If no agent clears the threshold, the single best-matching agent above this
+  // lower floor still engages — so a relevant post is never met with total
+  // silence. Set to 0 to disable and allow zero-engagement posts.
+  MIN_ENGAGEMENT_FLOOR: process.env.MIN_ENGAGEMENT_FLOOR
+    ? parseFloat(process.env.MIN_ENGAGEMENT_FLOOR)
+    : 0.15,
   MAX_CANDIDATES_FANOUT: 4,
   // pgvector ANN pruning: how many nearest agents to pull before the blend +
   // guardrail re-scoring runs. Must be >= MAX_CANDIDATES_FANOUT; larger keeps

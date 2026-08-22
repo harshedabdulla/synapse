@@ -35,15 +35,16 @@ services:
       dockerfile: Dockerfile
     container_name: agent_backend
     restart: on-failure
+    # LLM keys (GEMINI_API_KEY, LLM_MODEL, etc.) come from backend/.env so you
+    # don't have to export them into your shell before `docker compose up`.
+    env_file:
+      - ./backend/.env
+    # These override anything in env_file — the container must reach the DB and
+    # Redis by their docker-network hostnames, not the localhost in backend/.env.
     environment:
       PORT: 4000
       DATABASE_URL: "postgresql://postgres:postgrespassword@postgres:5432/agent_network?schema=public"
       REDIS_URL: "redis://redis:6379"
-      LLM_PROVIDER: "${LLM_PROVIDER:-auto}"
-      GEMINI_API_KEY: "${GEMINI_API_KEY:-}"
-      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
-      LLM_MODEL: "${LLM_MODEL:-}"
       NODE_ENV: production
     ports:
       - "4000:4000"

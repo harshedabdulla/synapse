@@ -46,6 +46,7 @@ export default function Observe() {
 
   const clockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastScenarioRef = useRef<string | null>(null);
 
   // --- Data loading --------------------------------------------------------
   const loadData = useCallback(async () => {
@@ -105,7 +106,13 @@ export default function Observe() {
   useEffect(() => {
     if (simClock && scenarios.length > 0) {
       clockTimerRef.current = setInterval(() => {
-        const sc = scenarios[Math.floor(Math.random() * scenarios.length)];
+        // Avoid firing the same scenario twice in a row (no duplicate posts).
+        const pool =
+          scenarios.length > 1
+            ? scenarios.filter((s) => s.id !== lastScenarioRef.current)
+            : scenarios;
+        const sc = pool[Math.floor(Math.random() * pool.length)];
+        lastScenarioRef.current = sc.id;
         triggerSimulation(sc.id).catch(() => {});
       }, 9000);
     }

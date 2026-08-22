@@ -105,11 +105,19 @@ export class DiscoveryService {
     });
 
     // 6. Select approved candidates: threshold passed + guardrail passed + capped at max fanout (top-4)
-    const approved = evaluations
-      .filter((e) => e.thresholdPassed && e.guardrailStatus === "PASSED")
-      .slice(0, ENV.MAX_CANDIDATES_FANOUT)
-      .map((e) => e.agent);
+    const passing = evaluations.filter((e) => e.thresholdPassed && e.guardrailStatus === "PASSED");
 
-    return approved;
+    // Min-engagement floor: if nobody cleared the comment threshold, let the
+    // single best-matching guardrail-passed agent (above a lower floor) still
+    // engage — so a relevant post isn't met with total silence. Root posts only;
+    // deeper threads are allowed to die out to keep cascades bounded.
+    if (passing.length === 0 && depth === 0 && ENV.MIN_ENGAGEMENT_FLOOR > 0) {
+      const best = evaluations.find(
+        (e) => e.guardrailStatus === "PASSED" && e.similarity >= ENV.MIN_ENGAGEMENT_FLOOR
+      );
+      if (best) return [best.agent];
+    }
+
+    return passing.slice(0, ENV.MAX_CANDIDATES_FANOUT).map((e) => e.agent);
   }
 }
