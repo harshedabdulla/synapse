@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import Link from "next/link";
-import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import {
   Agent,
   Post,
@@ -19,13 +17,18 @@ import {
   triggerSimulation,
   resetSystem,
 } from "../../lib/api";
-import { AgentDirectory } from "../../components/AgentDirectory";
 import { OrchestratorBar } from "../../components/OrchestratorBar";
 import { Timeline, ReasonEntry } from "../../components/Timeline";
-import { Telemetry } from "../../components/Telemetry";
+import { TelemetryPanel } from "../../components/Telemetry";
+import { ObserveSidebar } from "../../components/observe/ObserveSidebar";
+import { RightRail } from "../../components/observe/RightRail";
+import { Drawer } from "../../components/observe/Drawer";
+import { AgentRoster } from "../../components/observe/AgentRoster";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const ACTIVE_WINDOW_MS = 4000;
+
+type DrawerKind = "agents" | "activity" | "controls" | null;
 
 export default function Observe() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -39,6 +42,7 @@ export default function Observe() {
   const [simClock, setSimClock] = useState(false);
   const [busyScenario, setBusyScenario] = useState<string | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [drawer, setDrawer] = useState<DrawerKind>(null);
 
   const clockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -117,7 +121,7 @@ export default function Observe() {
       const age = nowTick - new Date(evt.timestamp).getTime();
       if (age > ACTIVE_WINDOW_MS) continue;
       if (evt.type === "AGENT_REASONING_COMPLETED") {
-        const h = evt.payload.agentHandle; // already includes leading "@"
+        const h = evt.payload.agentHandle;
         if (!map[h] && evt.payload.action !== "IGNORE") map[h] = "RESPONDING";
       } else if (evt.type === "DISCOVERY_EVALUATED") {
         for (const s of evt.payload.scores) {
@@ -167,20 +171,69 @@ export default function Observe() {
     }
   };
 
-  return (
-    <div className="flex justify-center min-h-screen">
-      <AgentDirectory agents={agents} statusMap={statusMap} />
+  const close = () => setDrawer(null);
 
-      <main className="flex-1 min-w-0 max-w-[640px] border-x border-x-border">
-        <div className="px-4 pt-3">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 data-label text-x-secondary hover:text-x-primary transition-colors"
+  return (
+    <div className="mx-auto flex min-h-screen max-w-[1400px] justify-center gap-0 px-0 sm:px-4">
+      <ObserveSidebar
+        agentsCount={agents.length}
+        isConnected={isConnected}
+        onOpenAgents={() => setDrawer("agents")}
+        onOpenActivity={() => setDrawer("activity")}
+        onOpenControls={() => setDrawer("controls")}
+      />
+
+      {/* Center feed */}
+      <main className="flex min-w-0 max-w-[640px] flex-1 flex-col border-x border-x-border">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-x-border bg-x-bg/80 px-4 py-3 backdrop-blur-md">
+          <div>
+            <h1 className="text-[19px] font-bold tracking-tight text-x-primary">Autonomous feed</h1>
+            <p className="text-[12px] text-x-secondary">Agents post, evaluate, and reply — live.</p>
+          </div>
+          <button
+            onClick={() => setDrawer("controls")}
+            className="rounded-full bg-x-accent px-4 py-1.5 text-[14px] font-bold text-black transition-colors hover:bg-x-accent-hover"
           >
-            <ArrowLeftIcon className="w-3.5 h-3.5" />
-            Home
-          </Link>
-        </div>
+            Inject event
+          </button>
+        </header>
+
+        <Timeline posts={posts} isLoading={isLoading} reasoningByPost={reasoningByPost} />
+      </main>
+
+      <RightRail
+        stats={stats}
+        agents={agents}
+        statusMap={statusMap}
+        onOpenActivity={() => setDrawer("activity")}
+        onOpenAgents={() => setDrawer("agents")}
+      />
+
+      {/* Drawers */}
+      <Drawer
+        open={drawer === "agents"}
+        onClose={close}
+        title="Enterprise agents"
+        subtitle={`${agents.length} autonomous participants`}
+      >
+        <AgentRoster agents={agents} statusMap={statusMap} />
+      </Drawer>
+
+      <Drawer
+        open={drawer === "activity"}
+        onClose={close}
+        title="Live activity"
+        subtitle={isConnected ? "Connected · streaming decisions" : "Offline — reconnecting"}
+      >
+        <TelemetryPanel events={streamEvents} stats={stats} isConnected={isConnected} />
+      </Drawer>
+
+      <Drawer
+        open={drawer === "controls"}
+        onClose={close}
+        title="Controls"
+        subtitle="Inject a scenario, run the clock, or reset"
+      >
         <OrchestratorBar
           scenarios={scenarios}
           onInject={handleInject}
@@ -189,11 +242,9 @@ export default function Observe() {
           onToggleClock={() => setSimClock((v) => !v)}
           onReset={handleReset}
           isResetting={isResetting}
+          embedded
         />
-        <Timeline posts={posts} isLoading={isLoading} reasoningByPost={reasoningByPost} />
-      </main>
-
-      <Telemetry events={streamEvents} stats={stats} isConnected={isConnected} />
+      </Drawer>
     </div>
   );
 }

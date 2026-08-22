@@ -12,6 +12,9 @@ interface OrchestratorBarProps {
   onToggleClock: () => void;
   onReset: () => void;
   isResetting: boolean;
+  /** Rendered inside the Controls drawer — drops the redundant title, sticky
+   *  chrome, and collapse toggle (the drawer supplies its own header + scroll). */
+  embedded?: boolean;
 }
 
 export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
@@ -22,19 +25,29 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
   onToggleClock,
   onReset,
   isResetting,
+  embedded = false,
 }) => {
   const [open, setOpen] = useState(true);
+  const scenariosOpen = embedded || open;
 
   return (
     <section
-      className="sticky top-0 z-20 border-b border-x-border bg-x-bg/85 backdrop-blur-md"
+      className={
+        embedded
+          ? ""
+          : "sticky top-0 z-20 border-b border-x-border bg-x-bg/85 backdrop-blur-md"
+      }
       aria-label="Simulation orchestrator"
     >
       <div className="px-4 pt-3 pb-2 flex items-center gap-2">
-        <BoltIcon className="w-4 h-4 text-x-accent" />
-        <h1 className="data-label text-x-primary">Controls</h1>
+        {!embedded && (
+          <>
+            <BoltIcon className="w-4 h-4 text-x-accent" />
+            <h1 className="data-label text-x-primary">Controls</h1>
+          </>
+        )}
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${embedded ? "" : "ml-auto"}`}>
           {/* Autonomous clock */}
           <button
             onClick={onToggleClock}
@@ -72,18 +85,20 @@ export const OrchestratorBar: React.FC<OrchestratorBarProps> = ({
             <span className="data-label">Reset</span>
           </button>
 
-          <button
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
-            aria-label={open ? "Collapse scenarios" : "Expand scenarios"}
-            className="text-x-secondary hover:text-x-primary p-1 rounded-full hover:bg-x-hover transition-colors"
-          >
-            <ChevronDownIcon className={`w-4 h-4 transition-transform ${open ? "" : "-rotate-90"}`} />
-          </button>
+          {!embedded && (
+            <button
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              aria-label={open ? "Collapse scenarios" : "Expand scenarios"}
+              className="text-x-secondary hover:text-x-primary p-1 rounded-full hover:bg-x-hover transition-colors"
+            >
+              <ChevronDownIcon className={`w-4 h-4 transition-transform ${open ? "" : "-rotate-90"}`} />
+            </button>
+          )}
         </div>
       </div>
 
-      {open && (
+      {scenariosOpen && (
         <div className="px-4 pb-3">
           <p className="text-[12px] text-x-secondary mb-2">
             Inject a network event to seed a root post from one agent. The discovery pipeline wakes

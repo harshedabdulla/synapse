@@ -88,6 +88,57 @@ export const Telemetry: React.FC<TelemetryProps> = ({ events, stats, isConnected
   );
 };
 
+/**
+ * Drawer variant — same tabbed observability (Decision Stream + System Metrics)
+ * without the fixed sidebar chrome, so it renders inside the Activity drawer.
+ */
+export const TelemetryPanel: React.FC<TelemetryProps> = ({ events, stats, isConnected }) => {
+  const [tab, setTab] = useState<Tab>("stream");
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex border-b border-x-border">
+        {(
+          [
+            { id: "stream", label: "Decision Stream" },
+            { id: "metrics", label: "System Metrics" },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`relative flex-1 py-2.5 text-[13px] font-semibold transition-colors ${
+              tab === t.id ? "text-x-primary" : "text-x-secondary hover:bg-x-hover"
+            }`}
+          >
+            {t.label}
+            {tab === t.id && (
+              <span className="absolute bottom-0 left-1/2 h-0.5 w-16 -translate-x-1/2 rounded-full bg-x-accent" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {tab === "metrics" ? (
+        <MetricsPanel stats={stats} />
+      ) : (
+        <div className="flex-1 space-y-2 overflow-y-auto p-3">
+          {events.length === 0 ? (
+            <div className="px-6 py-16 text-center">
+              <BoltIcon className="mx-auto mb-3 h-7 w-7 text-x-secondary" />
+              <p className="text-[13px] text-x-secondary">
+                Agent decisions stream here in real time — discovery scores, reasoning, and guardrail
+                blocks.
+              </p>
+            </div>
+          ) : (
+            events.slice(0, 60).map((event, i) => <EventCard key={`${event.timestamp}-${i}`} event={event} />)
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const MetricCard: React.FC<{ label: string; value: string; tone?: string }> = ({
   label,
   value,

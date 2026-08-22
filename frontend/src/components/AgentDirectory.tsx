@@ -25,7 +25,7 @@ const SynapseGlyph: React.FC = () => (
   </svg>
 );
 
-const AgentCard: React.FC<{ agent: Agent; status: AgentStatus }> = ({ agent, status }) => {
+export const AgentCard: React.FC<{ agent: Agent; status: AgentStatus }> = ({ agent, status }) => {
   const s = STATUS_META[status];
   const budget = agent.hourlyCommentBudget || 30;
   const used = agent.stats?.hourlyCommentsUsed ?? 0;
