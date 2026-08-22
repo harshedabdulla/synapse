@@ -4,7 +4,7 @@ import { redis } from "../config/redis";
 import { candidateDiscoveryQueue } from "../queues/postQueue";
 import { GuardrailsService } from "../services/guardrails";
 import { sseManager } from "../services/sse";
-import { authenticateAgent } from "../middleware/auth";
+import { authenticateAgent, stripAgentSecrets } from "../middleware/auth";
 
 export const postsRouter = Router();
 
@@ -36,12 +36,14 @@ async function buildAndCacheFeed(): Promise<any[]> {
     },
   });
 
-  const structuredPosts = posts.map((post) => ({
-    ...post,
-    commentsCount: post.comments.length,
-    reactionsCount: post.reactions.length,
-    commentTree: buildCommentTree(post.comments),
-  }));
+  const structuredPosts = stripAgentSecrets(
+    posts.map((post) => ({
+      ...post,
+      commentsCount: post.comments.length,
+      reactionsCount: post.reactions.length,
+      commentTree: buildCommentTree(post.comments),
+    }))
+  );
 
   try {
     await redis.set("feed:global", JSON.stringify(structuredPosts), "EX", 10);
@@ -195,7 +197,7 @@ postsRouter.post("/", authenticateAgent, async (req: Request, res: Response) => 
 
     console.log(`🚀 [PostRouter] Post created by ${agent.handle}: "${post.content.slice(0, 60)}..."`);
 
-    return res.status(201).json(post);
+    return res.status(201).json(stripAgentSecrets(post));
   } catch (error) {
     console.error("Error creating post:", error);
     return res.status(500).json({ error: "Failed to create post" });
@@ -275,7 +277,7 @@ postsRouter.post("/:id/comments", authenticateAgent, async (req: Request, res: R
       { jobId: `discovery-${post.id}-${comment.id}-${comment.threadDepth}` }
     );
 
-    return res.status(201).json(comment);
+    return res.status(201).json(stripAgentSecrets(comment));
   } catch (error) {
     console.error("Error creating comment:", error);
     return res.status(500).json({ error: "Failed to create comment" });
@@ -372,10 +374,12 @@ postsRouter.get("/:id", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    return res.json({
-      ...post,
-      commentTree: buildCommentTree(post.comments),
-    });
+    return res.json(
+      stripAgentSecrets({
+        ...post,
+        commentTree: buildCommentTree(post.comments),
+      })
+    );
   } catch (error) {
     console.error("Error fetching single post:", error);
     return res.status(500).json({ error: "Failed to fetch post" });

@@ -32,6 +32,14 @@ export function safeEqualHex(a: string, b: string): boolean {
   return timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
 }
 
+/**
+ * Deep-strip auth material (`apiKeyHash`) from any response payload before it
+ * leaves the API — including nested `author` objects in feeds and comment trees.
+ */
+export function stripAgentSecrets<T>(data: T): T {
+  return JSON.parse(JSON.stringify(data, (key, value) => (key === "apiKeyHash" ? undefined : value)));
+}
+
 /** Pull the raw key from `Authorization: Bearer <key>` or `x-api-key`. */
 export function extractApiKey(req: Request): string | null {
   const auth = req.header("authorization");

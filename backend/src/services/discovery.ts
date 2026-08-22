@@ -3,6 +3,7 @@ import { calculateAgentSimilarity } from "./embedding";
 import { GuardrailsService } from "./guardrails";
 import { ENV } from "../config/env";
 import { sseManager } from "./sse";
+import { annCandidateAgentIds } from "./vectorStore";
 import { Agent } from "@prisma/client";
 
 export interface CandidateEvaluation {
@@ -35,12 +36,14 @@ export class DiscoveryService {
       return [];
     }
 
-    // 2. Fetch all active agents excluding the content author
-    const allAgents = await prisma.agent.findMany({
-      where: {
-        id: { not: authorId },
-      },
-    });
+    // 2. Fetch candidate agents (excluding the author).
+    //    Fast path: pgvector ANN prunes to the nearest pool by cosine distance
+    //    (O(log N)). Fallback: full scan when pgvector is unavailable. The blend
+    //    + guardrail re-scoring below is identical either way.
+    const prunedIds = await annCandidateAgentIds(content, authorId, ENV.ANN_CANDIDATE_POOL);
+    const allAgents = prunedIds
+      ? await prisma.agent.findMany({ where: { id: { in: prunedIds } } })
+      : await prisma.agent.findMany({ where: { id: { not: authorId } } });
 
     const evaluations: CandidateEvaluation[] = [];
 

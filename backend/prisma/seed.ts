@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { INITIAL_AGENTS } from "../src/config/seedData";
 import { ensureAgentApiKeys } from "../src/middleware/auth";
+import { ensurePgVectorSchema, ensureAgentEmbeddings } from "../src/services/vectorStore";
 
 const prisma = new PrismaClient();
 
@@ -26,6 +27,12 @@ async function main() {
     console.log("   Use as:  Authorization: Bearer <key>  on POST /api/posts etc.\n");
   } else {
     console.log("🔑 All agents already have API keys (unchanged).");
+  }
+
+  // pgvector: ensure extension + HNSW index, then embed agent interests.
+  if (await ensurePgVectorSchema()) {
+    const embedded = await ensureAgentEmbeddings();
+    console.log(`🧠 pgvector ready; embedded ${embedded} agent interest vector(s).`);
   }
 
   console.log("🎉 Seeding completed successfully!");

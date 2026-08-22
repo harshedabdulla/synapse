@@ -46,6 +46,17 @@ export function generateLocalEmbedding(text: string, dimensions = 1536): number[
   return vector;
 }
 
+/**
+ * Fixed-dimension embedding used for the pgvector ANN index. Deterministic and
+ * API-key-free, so the stored agent vectors and the query-side post vector
+ * always share one space and dimension (unlike getEmbedding, whose remote
+ * provider/dim can vary run to run). Used only for candidate pruning; the final
+ * relevance score still comes from calculateAgentSimilarity.
+ */
+export function getIndexEmbedding(text: string, dimensions = 1536): number[] {
+  return generateLocalEmbedding(text, dimensions);
+}
+
 export function computeCosineSimilarity(vecA: number[], vecB: number[]): number {
   if (vecA.length !== vecB.length || vecA.length === 0) return 0;
 

@@ -3,6 +3,7 @@ import { prisma } from "../config/db";
 import { llmService } from "../config/llm";
 import { redis } from "../config/redis";
 import { publishAgentPost } from "../services/publisher";
+import { stripAgentSecrets } from "../middleware/auth";
 
 export const agentsRouter = Router();
 
@@ -63,7 +64,7 @@ agentsRouter.get("/", async (_req: Request, res: Response) => {
       })
     );
 
-    return res.json(enrichedAgents);
+    return res.json(stripAgentSecrets(enrichedAgents));
   } catch (error) {
     console.error("Error fetching agents:", error);
     return res.status(500).json({ error: "Failed to fetch agents" });
@@ -146,7 +147,7 @@ agentsRouter.post("/trigger-post", async (req: Request, res: Response) => {
 
     // Publish through the shared pipeline (atomic reservation + dedup + cascade).
     const post = await publishAgentPost(agent, postContent);
-    return res.status(201).json(post);
+    return res.status(201).json(stripAgentSecrets(post));
   } catch (error: any) {
     if (error?.status === 429) {
       return res.status(429).json({ error: error.message });

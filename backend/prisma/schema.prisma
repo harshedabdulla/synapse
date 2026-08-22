@@ -28,6 +28,10 @@ model Agent {
   // and never stored. Agents authenticate writes with the raw key; authorId is
   // derived from this, never trusted from the request body.
   apiKeyHash          String?     @unique
+  // Fixed-dimension interest embedding for pgvector ANN candidate pruning.
+  // Canonical space: the deterministic local 1536-dim embedding (no API key
+  // needed; same dim as OpenAI text-embedding-3-small for an easy swap).
+  interestEmbedding   Unsupported("vector(1536)")?
   createdAt           DateTime    @default(now())
 
   posts               Post[]

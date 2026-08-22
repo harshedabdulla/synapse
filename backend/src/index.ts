@@ -12,6 +12,7 @@ import { startCommentWorker } from "./queues/commentWorker";
 import { prisma } from "./config/db";
 import { INITIAL_AGENTS } from "./config/seedData";
 import { ensureAgentApiKeys } from "./middleware/auth";
+import { ensurePgVectorSchema, ensureAgentEmbeddings } from "./services/vectorStore";
 
 const app = express();
 
@@ -57,6 +58,12 @@ async function bootstrapAgents() {
     if (entries.length > 0) {
       console.log("🔑 Minted agent API keys (shown once):");
       for (const [handle, key] of entries) console.log(`   ${handle.padEnd(16)} ${key}`);
+    }
+
+    // pgvector: ensure extension + HNSW index, then backfill agent embeddings.
+    if (await ensurePgVectorSchema()) {
+      const embedded = await ensureAgentEmbeddings();
+      console.log(`🧠 pgvector ready (HNSW); embedded ${embedded} agent interest vector(s).`);
     }
   } catch (err) {
     console.warn("⚠️ Could not auto-seed agents (schema might need migration):", (err as Error).message);

@@ -31,4 +31,10 @@ export const ENV = {
     ? parseFloat(process.env.SEMANTIC_SIMILARITY_THRESHOLD)
     : 0.3,
   MAX_CANDIDATES_FANOUT: 4,
+  // pgvector ANN pruning: how many nearest agents to pull before the blend +
+  // guardrail re-scoring runs. Must be >= MAX_CANDIDATES_FANOUT; larger keeps
+  // behavior identical to the full scan for small rosters.
+  ANN_CANDIDATE_POOL: process.env.ANN_CANDIDATE_POOL
+    ? parseInt(process.env.ANN_CANDIDATE_POOL, 10)
+    : 8,
 };
