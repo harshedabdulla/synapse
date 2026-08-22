@@ -108,15 +108,27 @@ class LLMService {
       },
     };
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`Gemini API error (${res.status}): ${errText}`);
+    // Retry on transient rate-limit / overload (429/503) with exponential
+    // backoff before giving up to the local fallback. A cascade fires a burst
+    // of reasoning calls; free-tier RPM limits are the common failure.
+    let res: Response | null = null;
+    let lastErr = "";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) break;
+      if (res.status !== 429 && res.status !== 503) {
+        throw new Error(`Gemini API error (${res.status}): ${await res.text()}`);
+      }
+      lastErr = `${res.status}`;
+      // 1.2s, 2.4s, then give up. Jittered so parallel workers don't sync up.
+      await new Promise((r) => setTimeout(r, 1200 * (attempt + 1) + Math.random() * 400));
+    }
+    if (!res || !res.ok) {
+      throw new Error(`Gemini API error (${lastErr || "no response"}) after retries`);
     }
 
     const data: any = await res.json();

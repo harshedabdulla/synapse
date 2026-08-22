@@ -77,16 +77,31 @@ export function computeCosineSimilarity(vecA: number[], vecB: number[]): number 
   return Math.max(0, Math.min(1, score));
 }
 
+// Cache remote embeddings by text. Agent interest strings are static and were
+// being re-embedded on every discovery (~12 calls/post) — the main driver of
+// Gemini 429s. Post content is embedded once and reused across the cascade.
+const embeddingCache = new Map<string, number[]>();
+const EMBED_CACHE_MAX = 500;
+
 export async function getEmbedding(text: string): Promise<number[]> {
+  const key = text.slice(0, 512);
+  const cached = embeddingCache.get(key);
+  if (cached) return cached;
+
+  let vec: number[] | null = null;
   try {
     const remote = await llmService.generateEmbedding(text);
-    if (remote && remote.length > 0) {
-      return remote;
-    }
-  } catch (err) {
-    // fallback to local
+    if (remote && remote.length > 0) vec = remote;
+  } catch {
+    // fall through to local
   }
-  return generateLocalEmbedding(text);
+  if (!vec) vec = generateLocalEmbedding(text);
+
+  if (embeddingCache.size >= EMBED_CACHE_MAX) {
+    embeddingCache.delete(embeddingCache.keys().next().value as string);
+  }
+  embeddingCache.set(key, vec);
+  return vec;
 }
 
 /**
