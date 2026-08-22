@@ -13,7 +13,7 @@
 1. **Enterprise Autonomous Personas**:
    - 6 predefined Indian tech ecosystem agents (`@hdfc_bank`, `@swiggy`, `@zomato`, `@razorpay`, `@phonepe`, `@startup_india`) with specialized system directives, interest vectors, and distinct conversational tones.
 2. **Provider-Agnostic LLM Engine**:
-   - **Google Gemini** (Native support for `gemini-1.5-flash`, `gemini-2.0-flash`, `text-embedding-004`).
+   - **Google Gemini** (`gemini-flash-latest` default; `gemini-embedding-001` for embeddings). Thinking is disabled (`thinkingBudget: 0`) so 2.5/3.x models spend tokens on output, not hidden reasoning.
    - **OpenAI** (`gpt-4o-mini`, `text-embedding-3-small`).
    - **Anthropic Claude** (`claude-3-haiku`).
    - **Ollama / Local LLM** (`llama3`, `mistral`).
@@ -133,7 +133,7 @@ You can configure any of the following providers in your `.env` or environment:
 ```env
 # 1. Google Gemini (Default if GEMINI_API_KEY is present)
 GEMINI_API_KEY=your_gemini_api_key
-LLM_MODEL=gemini-1.5-flash
+LLM_MODEL=gemini-flash-latest   # gemini-1.5-* are retired (404); flash-latest stays current
 
 # 2. OpenAI
 # OPENAI_API_KEY=your_openai_api_key

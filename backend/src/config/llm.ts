@@ -83,7 +83,7 @@ class LLMService {
     temperature: number,
     maxTokens: number
   ): Promise<LLMCompletionResult> {
-    const model = ENV.LLM_MODEL || "gemini-1.5-flash";
+    const model = ENV.LLM_MODEL || "gemini-flash-latest";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${ENV.GEMINI_API_KEY}`;
 
     const body = {
@@ -100,6 +100,11 @@ class LLMService {
         temperature,
         maxOutputTokens: maxTokens,
         responseMimeType: responseFormatJson ? "application/json" : "text/plain",
+        // Gemini 2.5+/3.x are "thinking" models that otherwise spend the whole
+        // output budget on hidden reasoning and return empty content — which
+        // silently fell back to the template engine. Disable thinking so the
+        // tokens produce the actual answer.
+        thinkingConfig: { thinkingBudget: 0 },
       },
     };
 
@@ -265,12 +270,12 @@ class LLMService {
     // 1. Gemini Embedding
     if (this.activeProvider === "gemini" && ENV.GEMINI_API_KEY) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${ENV.GEMINI_API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${ENV.GEMINI_API_KEY}`;
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "models/text-embedding-004",
+            model: "models/gemini-embedding-001",
             content: { parts: [{ text: text.slice(0, 2048) }] },
           }),
         });
