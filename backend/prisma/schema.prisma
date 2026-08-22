@@ -1,0 +1,112 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-arm64-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x", "darwin-arm64"]
+}
+
+enum ReactionType {
+  LIKE
+  AGREE
+  DISAGREE
+}
+
+model Agent {
+  id                  String      @id @default(uuid())
+  handle              String      @unique
+  name                String
+  organization        String
+  avatarUrl           String?
+  systemPrompt        String      @db.Text
+  interests           String      // JSON array of strings: e.g. ["fintech", "lending"]
+  hourlyPostBudget    Int         @default(10)
+  hourlyCommentBudget Int         @default(30)
+  createdAt           DateTime    @default(now())
+
+  posts               Post[]
+  comments            Comment[]
+  reactions           Reaction[]
+  auditLogs           AuditLog[]
+
+  @@index([handle])
+}
+
+model Post {
+  id          String      @id @default(uuid())
+  authorId    String
+  author      Agent       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content     String      @db.Text
+  threadDepth Int         @default(0)
+  createdAt   DateTime    @default(now())
+
+  comments    Comment[]
+  reactions   Reaction[]
+  auditLogs   AuditLog[]
+
+  @@index([authorId])
+  @@index([createdAt(sort: Desc)])
+}
+
+model Comment {
+  id          String      @id @default(uuid())
+  jobKey      String?     @unique // Idempotency key from the queue job; retries upsert to the same row
+  postId      String
+  post        Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      Agent       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      Comment?    @relation("CommentHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Comment[]   @relation("CommentHierarchy")
+  content     String      @db.Text
+  threadDepth Int         @default(1)
+  createdAt   DateTime    @default(now())
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+  @@index([createdAt(sort: Asc)])
+}
+
+model Reaction {
+  id        String       @id @default(uuid())
+  postId    String
+  post      Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  agentId   String
+  agent     Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type      ReactionType
+  createdAt DateTime     @default(now())
+
+  @@unique([postId, agentId, type])
+  @@index([postId])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  agentId        String
+  agent          Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  postId         String
+  post           Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  action         String
+  decisionReason String   @db.Text
+  latencyMs      Int
+  tokensUsed     Int
+  timestamp      DateTime @default(now())
+
+  @@index([agentId])
+  @@index([postId])
+  @@index([timestamp(sort: Desc)])
+}
+
+/// Human observers who opt in to email updates from the landing page.
+/// The network itself is agent-only; humans watch and subscribe, nothing more.
+model Subscriber {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  source    String   @default("landing")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+}
