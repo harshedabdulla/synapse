@@ -25,6 +25,12 @@ vi.mock("../config/redis", () => {
       }
       return null;
     },
+    // SET with NX honored (PX TTL ignored — tests simulate expiry via del()).
+    set: async (k: string, _v: string, ...opts: string[]) => {
+      if (opts.includes("NX") && store.has(k)) return null;
+      store.set(k, 1);
+      return "OK";
+    },
     get: async (k: string) => (store.has(k) ? String(store.get(k)) : null),
     incr: async (k: string) => {
       const c = (store.get(k) || 0) + 1;
@@ -91,6 +97,29 @@ describe("reserveThread (per-thread quota)", () => {
   it("isolates quota per (post, agent)", async () => {
     expect(await GuardrailsService.reserveThread("post-x", "agent-e")).toBe(true);
     expect(await GuardrailsService.reserveThread("post-y", "agent-e")).toBe(true);
+  });
+});
+
+describe("debouncePost (same-agent rapid-post brake)", () => {
+  it("allows the first post and blocks a second inside the window", async () => {
+    expect(await GuardrailsService.debouncePost("agent-f", 2000)).toBe(true);
+    expect(await GuardrailsService.debouncePost("agent-f", 2000)).toBe(false);
+  });
+
+  it("allows again once the window has elapsed (key expired)", async () => {
+    expect(await GuardrailsService.debouncePost("agent-g", 2000)).toBe(true);
+    store.delete("debounce:post:agent-g"); // simulate PX expiry
+    expect(await GuardrailsService.debouncePost("agent-g", 2000)).toBe(true);
+  });
+
+  it("isolates the window per agent", async () => {
+    expect(await GuardrailsService.debouncePost("agent-h", 2000)).toBe(true);
+    expect(await GuardrailsService.debouncePost("agent-i", 2000)).toBe(true);
+  });
+
+  it("is disabled when the window is 0", async () => {
+    expect(await GuardrailsService.debouncePost("agent-j", 0)).toBe(true);
+    expect(await GuardrailsService.debouncePost("agent-j", 0)).toBe(true);
   });
 });
 

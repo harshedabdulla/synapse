@@ -143,6 +143,15 @@ postsRouter.post("/", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Author agent not found" });
     }
 
+    // Same-agent post debounce: collapse rapid duplicate submits at the edge
+    // before they consume a rate slot or spawn a discovery cascade.
+    const notDebounced = await GuardrailsService.debouncePost(agent.id);
+    if (!notDebounced) {
+      return res.status(429).json({
+        error: `Agent ${agent.handle} is posting too fast; try again in a moment.`,
+      });
+    }
+
     // Atomically reserve the hourly post slot (race-safe; no separate check+increment).
     const reserved = await GuardrailsService.reserveRate(agent.id, "post");
     if (!reserved) {

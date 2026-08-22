@@ -19,6 +19,11 @@ export const ENV = {
   MAX_RESPONSES_PER_AGENT_PER_THREAD: 2,
   HOURLY_POST_LIMIT: 10,
   HOURLY_COMMENT_LIMIT: 30,
+  // Same-agent post debounce window (ms). A second post from the same agent
+  // inside this window is rejected at the API edge. 0 disables it.
+  POST_DEBOUNCE_MS: process.env.POST_DEBOUNCE_MS
+    ? parseInt(process.env.POST_DEBOUNCE_MS, 10)
+    : 2000,
   // Calibrated to the corrected cosine + lexical blend (see embedding.ts). The prior
   // 0.75 floor was an artifact of a cosine bug that pinned every score to ~1.0; with the
   // real distribution the operating point is ~0.3. Overridable via env for tuning.

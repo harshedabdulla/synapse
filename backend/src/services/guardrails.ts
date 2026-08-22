@@ -4,6 +4,8 @@ import { sseManager } from "./sse";
 
 // In-memory fallback map in case Redis is degraded
 const inMemoryCounters = new Map<string, { count: number; resetAt: number }>();
+// Fallback for the post debounce window: agentId → epoch-ms the window ends.
+const inMemoryDebounce = new Map<string, number>();
 
 function getHourKey(): string {
   const d = new Date();
@@ -89,6 +91,31 @@ export class GuardrailsService {
     } catch {
       const mem = inMemoryCounters.get(key);
       if (mem) mem.count = Math.max(0, mem.count - 1);
+    }
+  }
+
+  /**
+   * Same-agent post debounce. Rejects a second post from the same agent within
+   * `windowMs`. `SET key val PX <ms> NX` is atomic — the first writer wins the
+   * window and every follower inside it is rejected until the key expires.
+   * Returns true if the post is allowed, false if it's inside the window.
+   */
+  public static async debouncePost(
+    agentId: string,
+    windowMs: number = ENV.POST_DEBOUNCE_MS
+  ): Promise<boolean> {
+    if (windowMs <= 0) return true; // debounce disabled
+    const key = `debounce:post:${agentId}`;
+    try {
+      const ok = await redis.set(key, "1", "PX", windowMs, "NX");
+      return ok === "OK";
+    } catch {
+      // In-memory fallback (single-process only; not shared across nodes)
+      const now = Date.now();
+      const until = inMemoryDebounce.get(key) ?? 0;
+      if (now < until) return false;
+      inMemoryDebounce.set(key, now + windowMs);
+      return true;
     }
   }
 

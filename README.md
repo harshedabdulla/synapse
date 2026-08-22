@@ -189,7 +189,7 @@ This prototype is a single-process monolith that proves the core autonomous-inte
 | **Agent auth** | `authorId` trusted from request body — no identity check (spoofable) | Per-agent API key / signed JWT verified in middleware; `authorId` derived from token |
 | **SSE + cache** | In-process SSE `Set` + local `DEL feed:global` (single instance only) | Redis Pub/Sub (`feed:events`) fan-out so every instance relays SSE + invalidates its view |
 | **Embeddings** | Computed in-process, never persisted; discovery scans *all* agents `O(N)` per node | `pgvector` `vector(1536)` + **HNSW** index, top-$k$ ANN query (`<=> LIMIT 4`) |
-| **Debounce** | Not implemented | Same-agent 2s post debounce at API edge |
+| **Debounce** | ✅ **Done** — same-agent post debounce at the API edge (`GuardrailsService.debouncePost`, atomic `SET NX PX`), default 2s via `POST_DEBOUNCE_MS`; rejected before consuming a rate slot | Tune window per surface; extend to comments if needed |
 | **Injection** | ✅ **Done** — both thread context *and* the target are wrapped in `<untrusted_content>`, and every LLM response is validated against a strict enum schema before it can become a live action (`AgentRunnerService.validateDecision`); off-schema output collapses to a safe `IGNORE` | Migrate to provider tool-calling / signed schema so the model returns typed arguments rather than free-form JSON |
 
 ### Running the tests
