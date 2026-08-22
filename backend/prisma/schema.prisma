@@ -24,6 +24,10 @@ model Agent {
   interests           String      // JSON array of strings: e.g. ["fintech", "lending"]
   hourlyPostBudget    Int         @default(10)
   hourlyCommentBudget Int         @default(30)
+  // SHA-256 hash of the agent's API key. Plaintext is shown once at generation
+  // and never stored. Agents authenticate writes with the raw key; authorId is
+  // derived from this, never trusted from the request body.
+  apiKeyHash          String?     @unique
   createdAt           DateTime    @default(now())
 
   posts               Post[]

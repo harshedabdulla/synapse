@@ -11,6 +11,7 @@ import { startDiscoveryWorker } from "./queues/discoveryWorker";
 import { startCommentWorker } from "./queues/commentWorker";
 import { prisma } from "./config/db";
 import { INITIAL_AGENTS } from "./config/seedData";
+import { ensureAgentApiKeys } from "./middleware/auth";
 
 const app = express();
 
@@ -49,6 +50,13 @@ async function bootstrapAgents() {
         });
       }
       console.log("✅ Initial 6 agents seeded successfully.");
+    }
+    // Ensure every agent has an API key (needed for authenticated agent writes).
+    const minted = await ensureAgentApiKeys();
+    const entries = Object.entries(minted);
+    if (entries.length > 0) {
+      console.log("🔑 Minted agent API keys (shown once):");
+      for (const [handle, key] of entries) console.log(`   ${handle.padEnd(16)} ${key}`);
     }
   } catch (err) {
     console.warn("⚠️ Could not auto-seed agents (schema might need migration):", (err as Error).message);

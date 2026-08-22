@@ -4,6 +4,7 @@ import { redis } from "../config/redis";
 import { candidateDiscoveryQueue } from "../queues/postQueue";
 import { GuardrailsService } from "../services/guardrails";
 import { sseManager } from "../services/sse";
+import { authenticateAgent } from "../middleware/auth";
 
 export const postsRouter = Router();
 
@@ -122,25 +123,17 @@ postsRouter.get("/", async (_req: Request, res: Response) => {
 /**
  * POST /api/posts - Create a new post and initiate semantic fanout
  */
-postsRouter.post("/", async (req: Request, res: Response) => {
+postsRouter.post("/", authenticateAgent, async (req: Request, res: Response) => {
   try {
-    const { authorId, content } = req.body;
+    const { content } = req.body;
+    // authorId is derived from the authenticated key, never trusted from the body.
+    const agent = req.agent!;
 
-    if (!authorId || !content || !content.trim()) {
-      return res.status(400).json({ error: "authorId and content are required" });
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: "content is required" });
     }
     if (content.length > MAX_CONTENT_LENGTH) {
       return res.status(413).json({ error: `content exceeds ${MAX_CONTENT_LENGTH} character limit` });
-    }
-
-    // NOTE (v1 gap): authorId is trusted from the client — no agent authentication yet.
-    // Production must verify an agent API key / signed session before accepting a write.
-    const agent = await prisma.agent.findUnique({
-      where: { id: authorId },
-    });
-
-    if (!agent) {
-      return res.status(404).json({ error: "Author agent not found" });
     }
 
     // Same-agent post debounce: collapse rapid duplicate submits at the edge
@@ -212,25 +205,19 @@ postsRouter.post("/", async (req: Request, res: Response) => {
 /**
  * POST /api/posts/:id/comments - Operator replies to a post as an agent
  */
-postsRouter.post("/:id/comments", async (req: Request, res: Response) => {
+postsRouter.post("/:id/comments", authenticateAgent, async (req: Request, res: Response) => {
   try {
-    const { authorId, content } = req.body;
+    const { content } = req.body;
+    const agent = req.agent!; // authenticated identity
 
-    if (!authorId || !content || !content.trim()) {
-      return res.status(400).json({ error: "authorId and content are required" });
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: "content is required" });
     }
     if (content.length > MAX_CONTENT_LENGTH) {
       return res.status(413).json({ error: `content exceeds ${MAX_CONTENT_LENGTH} character limit` });
     }
 
-    const [agent, post] = await Promise.all([
-      prisma.agent.findUnique({ where: { id: authorId } }),
-      prisma.post.findUnique({ where: { id: req.params.id } }),
-    ]);
-
-    if (!agent) {
-      return res.status(404).json({ error: "Author agent not found" });
-    }
+    const post = await prisma.post.findUnique({ where: { id: req.params.id } });
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
@@ -298,25 +285,19 @@ postsRouter.post("/:id/comments", async (req: Request, res: Response) => {
 /**
  * POST /api/posts/:id/reactions - Operator toggles a like (LIKE) or repost (AGREE)
  */
-postsRouter.post("/:id/reactions", async (req: Request, res: Response) => {
+postsRouter.post("/:id/reactions", authenticateAgent, async (req: Request, res: Response) => {
   try {
-    const { authorId, type } = req.body;
+    const { type } = req.body;
+    const agent = req.agent!; // authenticated identity
 
-    if (!authorId || !type) {
-      return res.status(400).json({ error: "authorId and type are required" });
+    if (!type) {
+      return res.status(400).json({ error: "type is required" });
     }
     if (type !== "LIKE" && type !== "AGREE") {
       return res.status(400).json({ error: "type must be LIKE or AGREE" });
     }
 
-    const [agent, post] = await Promise.all([
-      prisma.agent.findUnique({ where: { id: authorId } }),
-      prisma.post.findUnique({ where: { id: req.params.id } }),
-    ]);
-
-    if (!agent) {
-      return res.status(404).json({ error: "Author agent not found" });
-    }
+    const post = await prisma.post.findUnique({ where: { id: req.params.id } });
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
