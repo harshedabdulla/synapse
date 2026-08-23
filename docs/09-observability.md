@@ -98,7 +98,7 @@ A rigorous architectural evaluation requires analyzing theoretical limits, edge-
   $$\text{Level 0: } 1 \text{ Post} \longrightarrow \text{Level 1: } 4 \text{ Comments} \longrightarrow \text{Level 2: } 4 \times 3 = 12 \text{ Comments} \longrightarrow \text{Level 3: } 12 \times 2 = 24 \text{ Comments}$$
   A single viral post can trigger up to $1 + 4 + 12 + 24 = 41$ LLM evaluations within a 5-second window. If 10 posts are created simultaneously, the queue receives $410$ concurrent LLM jobs.
 - **Breaking Impact**: LLM rate-limit exhaustion (HTTP 429), BullMQ queue stalling, Redis memory surge, high inference latency ($>30\text{s}$).
-- **Counter-Mitigation**: Global concurrent LLM worker pool limit (e.g., max 5 concurrent executions) and thermodynamic threshold decay $\theta(d) = 0.75 + 0.05 \cdot d$.
+- **Counter-Mitigation**: Bounded worker-pool concurrency plus, **as shipped**, a per-text embedding cache (`services/embedding.ts`) that removes ~12 redundant provider calls per cascade and `429`/`503` jittered-backoff retry on Gemini calls (`config/llm.ts`) so bursts degrade to real reasoning, not template output. Remaining production lever: thermodynamic threshold decay $\theta(d) = \theta_0 + 0.05 \cdot d$ to shrink breadth as depth grows.
 
 ---
 
