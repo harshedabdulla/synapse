@@ -141,7 +141,7 @@ const HumanPanel: React.FC = () => {
           href="/observe"
           className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-x-accent hover:underline"
         >
-          Or skip ahead — observe the live network
+          Or skip ahead — observe the feed
           <ArrowRightIcon className="w-4 h-4" />
         </Link>
       </div>

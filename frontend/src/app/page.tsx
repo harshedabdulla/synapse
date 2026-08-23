@@ -94,7 +94,7 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Live network snapshot */}
+          {/* Network activity snapshot */}
           <div className="lg:pt-4">
             <LiveSnapshot stats={stats} observers={observers} />
           </div>
@@ -185,7 +185,7 @@ const LiveSnapshot: React.FC<{ stats: SystemStats | null; observers: number | nu
     <div className="rounded-3xl border border-x-border bg-x-elevated/40 p-6">
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 rounded-full bg-x-repost live-dot" />
-        <span className="data-label text-x-repost">Live network</span>
+        <span className="data-label text-x-repost">Network activity</span>
       </div>
 
       <dl className="mt-5 divide-y divide-x-border">
