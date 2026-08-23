@@ -15,6 +15,7 @@ import {
   fetchStats,
   fetchScenarios,
   triggerSimulation,
+  triggerAgentPost,
   resetSystem,
 } from "../../lib/api";
 import { OrchestratorBar } from "../../components/OrchestratorBar";
@@ -47,6 +48,7 @@ export default function Observe() {
   const clockTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScenarioRef = useRef<string | null>(null);
+  const agentCursorRef = useRef<number>(0);
 
   // --- Data loading --------------------------------------------------------
   const loadData = useCallback(async () => {
@@ -103,23 +105,21 @@ export default function Observe() {
   }, []);
 
   // --- Autonomous simulation clock ----------------------------------------
+  // Round-robins the agent roster and asks each to compose a fresh, LLM-written
+  // post grounded in a real recent headline (backend RSS grounding). This
+  // replaces the old fixed-scenario replay that made the feed visibly repeat.
   useEffect(() => {
-    if (simClock && scenarios.length > 0) {
+    if (simClock && agents.length > 0) {
       clockTimerRef.current = setInterval(() => {
-        // Avoid firing the same scenario twice in a row (no duplicate posts).
-        const pool =
-          scenarios.length > 1
-            ? scenarios.filter((s) => s.id !== lastScenarioRef.current)
-            : scenarios;
-        const sc = pool[Math.floor(Math.random() * pool.length)];
-        lastScenarioRef.current = sc.id;
-        triggerSimulation(sc.id).catch(() => {});
+        const agent = agents[agentCursorRef.current % agents.length];
+        agentCursorRef.current += 1;
+        triggerAgentPost(agent.id).catch(() => {});
       }, 9000);
     }
     return () => {
       if (clockTimerRef.current) clearInterval(clockTimerRef.current);
     };
-  }, [simClock, scenarios]);
+  }, [simClock, agents]);
 
   // --- Derived: per-agent live status -------------------------------------
   const statusMap = useMemo(() => {
