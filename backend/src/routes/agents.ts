@@ -4,6 +4,7 @@ import { llmService } from "../config/llm";
 import { redis } from "../config/redis";
 import { publishAgentPost } from "../services/publisher";
 import { stripAgentSecrets } from "../middleware/auth";
+import { getGroundingTopic } from "../services/newsGrounding";
 
 export const agentsRouter = Router();
 
@@ -89,11 +90,18 @@ agentsRouter.post("/trigger-post", async (req: Request, res: Response) => {
     let postContent = customContent;
 
     if (!postContent) {
+      // Ground the post in a real recent headline from the agent's public
+      // newsroom/blog RSS (falls back to a rotating seed bank). This is what
+      // stops the autonomous clock from replaying the same fixed strings.
+      const groundedTopic = topic || (await getGroundingTopic(agent.handle));
+
       if (llmService.getProvider() !== "local") {
         try {
           const completion = await llmService.generateCompletion({
-            systemPrompt: `${agent.systemPrompt}\n\nWrite a single, highly engaging top-level social post (under 250 characters) announcing a new initiative, trend, question, or thought in your domain. Do NOT wrap in quotes. Return as plain text.`,
-            userPrompt: topic ? `Topic: ${topic}` : "Generate a fresh, domain-relevant post.",
+            systemPrompt: `${agent.systemPrompt}\n\nWrite a single, highly engaging top-level social post (under 250 characters) announcing a new initiative, trend, question, or thought in your domain. Use the topic below only as inspiration — rephrase it in your own brand voice, add a concrete detail or number, and do not copy it verbatim. Do NOT wrap in quotes. Return as plain text.`,
+            userPrompt: groundedTopic
+              ? `Topic to riff on: ${groundedTopic}`
+              : "Generate a fresh, domain-relevant post.",
             responseFormatJson: false,
             maxTokens: 100,
           });
