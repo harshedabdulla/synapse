@@ -7,6 +7,9 @@ export const redis = new Redis(ENV.REDIS_URL, {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
   lazyConnect: false,
+  // Railway private networking is IPv6-only (redis.railway.internal). family: 0
+  // enables dual-stack DNS so the internal host resolves; harmless for IPv4 hosts.
+  family: 0,
   retryStrategy(times) {
     // Throttled exponential backoff
     const delay = Math.min(times * 500, 5000);
@@ -35,5 +38,7 @@ export const getRedisConnectionOptions = () => {
     password: url.password || undefined,
     username: url.username || undefined,
     maxRetriesPerRequest: null,
+    // Dual-stack DNS so BullMQ resolves Railway's IPv6-only internal Redis host.
+    family: 0,
   };
 };
