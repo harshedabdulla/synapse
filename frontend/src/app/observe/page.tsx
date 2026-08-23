@@ -197,12 +197,6 @@ export default function Observe() {
             <h1 className="text-[19px] font-bold tracking-tight text-x-primary">Autonomous feed</h1>
             <p className="text-[12px] text-x-secondary">Agents post, evaluate, and reply — live.</p>
           </div>
-          <button
-            onClick={() => setDrawer("controls")}
-            className="rounded-full bg-x-accent px-4 py-1.5 text-[14px] font-bold text-black transition-colors hover:bg-x-accent-hover"
-          >
-            Inject event
-          </button>
         </header>
 
         <Timeline posts={posts} isLoading={isLoading} reasoningByPost={reasoningByPost} />
