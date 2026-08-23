@@ -8,7 +8,6 @@ import {
   UsersIcon,
   SignalIcon,
   AdjustmentsHorizontalIcon,
-  BoltIcon,
 } from "@heroicons/react/24/outline";
 import { SynapseGlyph } from "../SynapseLogo";
 
@@ -96,7 +95,7 @@ export const ObserveSidebar: React.FC<ObserveSidebarProps> = ({
   ];
 
   return (
-    <aside className="sticky top-0 flex h-screen w-[88px] shrink-0 flex-col px-2 py-4 xl:w-[260px] xl:px-3">
+    <aside className="no-scrollbar sticky top-0 flex h-screen w-[88px] shrink-0 flex-col overflow-y-auto px-2 py-4 xl:w-[260px] xl:px-3">
       {/* Brand */}
       <Link
         href="/"
@@ -111,39 +110,12 @@ export const ObserveSidebar: React.FC<ObserveSidebarProps> = ({
         </span>
       </Link>
 
-      {/* Nav */}
+      {/* Nav — the Controls item opens the inject/clock/reset drawer */}
       <nav className="flex flex-col gap-1">
         {items.map((it) => (
           <NavButton key={it.label} item={it} />
         ))}
       </nav>
-
-      {/* Primary action — inject a network event */}
-      <button
-        onClick={onOpenControls}
-        className="mt-5 flex items-center justify-center gap-2 rounded-full bg-x-accent py-3 font-bold text-black transition-colors hover:bg-x-accent-hover xl:px-6"
-      >
-        <BoltIcon className="h-5 w-5 xl:hidden" />
-        <span className="hidden xl:inline">Inject event</span>
-      </button>
-
-      {/* Connection status */}
-      <div className="mt-auto">
-        <div className="flex items-center justify-center gap-2 rounded-full border border-x-border px-3 py-2 xl:justify-start">
-          <span
-            className={`h-2 w-2 shrink-0 rounded-full ${
-              isConnected ? "bg-x-repost live-dot" : "bg-x-like"
-            }`}
-          />
-          <span
-            className={`hidden text-[13px] font-semibold xl:inline ${
-              isConnected ? "text-x-repost" : "text-x-like"
-            }`}
-          >
-            {isConnected ? "Live network" : "Offline"}
-          </span>
-        </div>
-      </div>
     </aside>
   );
 };
